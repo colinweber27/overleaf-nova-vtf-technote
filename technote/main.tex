@@ -6,33 +6,41 @@
 \usepackage[colorlinks=true, allcolors=blue]{hyperref}
 \usepackage[numbers]{natbib}
 
-\title{NOvA Production 6 Validation Task Force Technical Note}
-\author{Alexander Booth and Tricia Vahle}
+\title{FD OPAL Prong Validation}
+\author{Colin Weber}
 
 \begin{document}
 \maketitle
 
-\tableofcontents
+\section{Changes from Prod5.1 to Prod6 related to OPAL Prong}
+Prod6 changes the prong-matching algorithm to be OPAL Prong. Previously, 2D prongs found via the fuzzy-k algorithm were matched by making the best available match, and then removing those 2D prongs from further consideration. With the remaining 2D prongs, the best match was again made. The shortcomings of this method are that it is ``greedy", meaning that it's not guaranteed to find the best global solution, and it is not designed to handle cases where prongs are overlapping in one view, but resolved in another. The new algorithm, \textbf{O}verlapping \textbf{Pa}rtic\textbf{l}e (OPAL) Reconstruction, improves upon the previous method by optimizing the best global solution and allowing 2D hits to be shared between 3D prongs. Because OPAL allows hits to be used in more than one 3D prong, we expect that OPAL can find more 3D prongs and leave fewer ``orphaned" 2D prongs. See slides 39-41 in DocDB 63943 \cite{63943} for supporting graphics.
 
-\section{Introduction}
+There are other changes in Prod6 which affect prong-matching that complicate our expectation of OPAL Prong. Prod6 replaces Elastic Arms w/ ML Vertex for vertex locating, and Prod6 uses a different GENIE CMC. In order to try to untangle how each of these changes affects Prod6, we looked at several different production datasets.
+\begin{itemize}
+    \item Prod5.1: Used Elastic Arms, the greedy prong-matching algorithm, and Prod5.1 cross section tune.
+    \item Prod5.1 Reco. Respin: runs Prod6 reconstruction (ML Vertex, OPAL Prong) on Prod5.1 simulation using the Prod5.1 cross section tune.
+    \item MiniProd6.1: Includes new cross section tune and ML Vertex, but not OPAL Prong.
+    \item Prod6: Exactly like MiniProd6.1, but adds OPAL Prong.
+\end{itemize}
 
-\section{Beam}
-For an example reference, see ~\cite{2021-06-29-retriggering-summary}.
+\section{Official Prod6 Validation}
+The plots that we should label as ``official" Prod6 validation are in DocDB 69292 \cite{69292}. This set of spectra compares the distributions of relevant prong-making variables at the FD between Prod5.1, Prod5.1 Reco. Respin, MiniProd6.1, and Prod6. All combinations of horn current (FHC, RHC), flux (nonswap, fluxswap), quality cut (w/, w/o), and PPFX weights (on, off) were analyzed. The quality cut consisted of a track or prong requirement, at least 20 hits, at least 4 consecutive planes hit, and a vertex resolution cut that requires that the reconstructed and true vertex be within 13cm of each other. The distributions considered were the number of 2D and 3D prongs, 3D prong length, calorimetric energy, and \# hits, particle CVN scores, all six 3D prong containment variables which measure how close the closest prong in an event is to one of the detector sides, and 3D prong making efficiency which quantifies the probability that a true primary particle of some energy makes at least 1 3D prong.
 
+We found that OPAL Prong finds more 3D prongs per event than the previous prong-matching algorithm. These prongs tend to be shorter, with fewer hits, and less calorimetric energy. Protons are the particles most likely to create events like this, so they are the particle that gets the biggest ID boost from OPAL Prong. 
 
-\section{Neutrino Interaction Model}
+\section{Calculating prong-making efficiency}
+There were two major threads that had to be worked out in order to make the validation plots. The most significant was in defining a proper prong-making efficiency metric. Several of these are defined in DocDB 64728 \cite{64728}. Such a metric could answer several different questions, such as how often does a true primary particle make at least one 3D or 2D prong, how many prongs get made per true primary particle (shown in DocDB 64180 \cite{64180}), or how many prongs get made per primary particle that exceed some prong efficiency? In the latter case, the prong efficiency is defined as the percent of the backtracked particle's energy that is contained in the prong. We decided that the most useful quantity is the percent of primary particles that make at least one 3D prong, and this is what is reported in Refs. \cite{64779, 68251, 68359, 69292}.
 
+The calculation of this quantity for a given particle type begins by making the true spectrum of primary particle energies. This composes the denominator of the efficiency calculation. The numerator is the true particle energy spectrum of particles that are the mother particle of at least one 3D prong. To construct this, we loop over all the prongs in an event and identify their backtracked mother's PDG and energy. If the PDG matches the particle type we're interested in, and the energy matches one of the true primary particles, then that energy is filled in the numerator spectrum. We also keep a list to ensure that the same mother particle's energy can't be filled again.
 
-\section{Detector Simulation and Calibration}
+One of the keys in this calculation is using the mother branch of the backtracker, not the particle that the backtracker nominally assigns as a prong's truth. The backtracker works by looking at all of the Geant particles that have hits in the prong, and then assigning the prong's ``truth" to be the particle that deposited the most energy in the prong. As a result, the backtracked particle doesn't have to be a primary particle, since primary particles in Geant only exist up until their first interaction with the detector, and cascades of daughter particles are typically several generations long. By using the mother branch of the backtracker, which corresponds to the primary particle that led to the daughter that was identified as the true particle for a prong, this problem is entirely avoided. This problem is outlined and corrected in Refs. \cite{68359, 69292}, and can be seen in the diminishing efficiency for higher-energy hadrons in Refs. \cite{64180, 64487, 64728, 68251}.
 
-
-\section{Detector Reconstruction}
-\subsection{Infrastructure}
-\subsection{Pre-prong Making}
-\subsection{Post-prong Making}
-
-
-\section{Data Quality}
+\section{Other documents to highlight}
+\begin{itemize}
+    \item The initial study in DocDB 63943 \cite{63943} showed OPAL Prong reacting way more aggressively to the containment cut. This was traced down to the FD \texttt{.fcl} not having any preselection cuts. \texttt{novasoft} treats this case as if \textit{all} preselection cuts should be applied, including a hard-coded ND containment-style cut that throws out events in which there is a prong longer than the length of the ND. We fixed the problem by adding specific preslection cuts to the FD \texttt{.fcl}.
+    \item DocDB 64487 \cite{64487} is a summary from the Fall 2024 collaboration meeting of all the work up until that time.
+    \item DocDB 68251 \cite{68251} shows ``Prod6" curves, but these are improperly labeled. Their correct name is ``Prod5.1 Reco. Respin". 
+\end{itemize}
 
 
 \bibliographystyle{unsrtnat}
